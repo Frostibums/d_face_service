@@ -1,0 +1,21 @@
+services:
+  face-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: face-service
+    volumes:
+      - .:/app
+    ports:
+      - "8005:8000"
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - attendance_net
+
+volumes:
+  postgres_data:
+
+networks:
+  attendance_net:
+    external: true
