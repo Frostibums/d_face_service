@@ -15,14 +15,10 @@ logger = logging.getLogger(__name__)
 class FaceRecognitionService:
     def __init__(
         self,
-        reference_dir: Path,
-        captured_dir: Path,
-        kafka_producer: KafkaProducer,
+        producer: KafkaProducer,
         image_storage: LocalImageStorage,
     ):
-        self.reference_dir = reference_dir
-        self.captured_dir = captured_dir
-        self.kafka_producer = kafka_producer
+        self.producer = producer
         self.image_storage = image_storage
         self._reference_encodings: dict[str, np.ndarray] = {}
 
@@ -56,16 +52,12 @@ class FaceRecognitionService:
 
     async def recognize_faces_for_event(self, event_id: UUID) -> list[UUID] | None:
         logger.info(f"Starting recognition process for event: {str(event_id)}")
-        event_folder = self.captured_dir / str(event_id)
-        logger.info(f"{event_folder.name}")
-        if not event_folder.exists():
-            logger.info(f"{event_folder=} not found")
+        images = self.image_storage.list_images(event_id)
+        if not images:
+            logger.info(f"No images found for event {event_id}")
             return None
 
         self._load_references()
-        images = list(event_folder.glob("*.jpg"))
-        if not images:
-            return None
 
         async def process_batch(batch: list[Path]) -> list[UUID]:
             recognized = []
@@ -76,15 +68,10 @@ class FaceRecognitionService:
 
                 if student_ids:
                     for student_id in student_ids:
-                        await self.kafka_producer.publish_student_recognized(
+                        await self.producer.publish_student_recognized(
                             event_id=str(event_id),
                             student_id=str(student_id),
                         )
-                    try:
-                        image_path.unlink()
-                        logger.info(f"Deleted recognized image: {image_path}")
-                    except Exception as e:
-                        logger.warning(f"Failed to delete image {image_path}: {e}")
                     recognized.extend([UUID(student_id) for student_id in student_ids])
             return list(set(recognized))
 
@@ -94,7 +81,7 @@ class FaceRecognitionService:
         recognized_student_ids = set()
         for batch in batches:
             recognized_batch = await process_batch(batch)
-            for elem in recognized_batch:
-                recognized_student_ids.add(elem)
-        return list(recognized_student_ids)
+            recognized_student_ids.update(recognized_batch)
 
+        self.image_storage.clear_event_folder(event_id)
+        return list(recognized_student_ids)

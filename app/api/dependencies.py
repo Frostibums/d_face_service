@@ -8,19 +8,22 @@ from app.infra.storage import LocalImageStorage
 from app.service.recognition import FaceRecognitionService
 
 
-def get_storage() -> LocalImageStorage:
-    return LocalImageStorage(base_path=Path("captured"))
-
-
 def get_producer(request: Request) -> KafkaProducer:
     return request.app.state.kafka_producer
 
 
+def get_image_storage() -> LocalImageStorage:
+    return LocalImageStorage(
+        captured_path=Path("captured"),
+        ethalons_path=Path("references"),
+    )
+
+
 def get_recognition_service(
         producer: KafkaProducer = Depends(get_producer),
+        image_storage: LocalImageStorage = Depends(get_image_storage),
 ) -> FaceRecognitionService:
     return FaceRecognitionService(
-        reference_dir=Path("references"),
-        captured_dir=Path("captured"),
-        kafka_producer=producer,
+        producer=producer,
+        image_storage=image_storage,
     )

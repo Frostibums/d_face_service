@@ -35,3 +35,9 @@ class LocalImageStorage:
 
     def list_reference_images(self) -> list[Path]:
         return list(self.ethalons_path.glob("*.jpg"))
+
+    @classmethod
+    def delete_file(cls, path: Path) -> None:
+        if path.exists():
+            path.unlink()
+

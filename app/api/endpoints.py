@@ -1,11 +1,10 @@
-import logging
 import uuid
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from starlette import status
 
-from app.api.dependencies import get_recognition_service, get_storage
+from app.api.dependencies import get_image_storage, get_recognition_service
 from app.api.schemas import ImageUploadResponse
 from app.infra.storage import LocalImageStorage
 from app.service.recognition import FaceRecognitionService
@@ -20,7 +19,7 @@ router = APIRouter()
 async def upload_image(
         event_id: UUID,
         file: UploadFile = File(...),
-        storage: LocalImageStorage = Depends(get_storage),
+        storage: LocalImageStorage = Depends(get_image_storage),
 ):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File is not an image.")
