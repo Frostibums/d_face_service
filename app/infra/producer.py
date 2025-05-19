@@ -21,6 +21,6 @@ class KafkaProducer:
         message = {
             "event_id": event_id,
             "student_id": student_id,
-            "service_name": self._service_name,
+            # "service_name": self._service_name,
         }
         await self._producer.send_and_wait("student-recognized", message)
